@@ -151,7 +151,7 @@ class ApiRequestHandler {
         let permShowLures = perms.contains(.viewMapLure)
         let permShowInvasions = perms.contains(.viewMapInvasion)
         if isPost && (permViewMap && (showPokestops && permShowStops || showQuests && permShowQuests || showInvasions && permShowInvasions)) {
-            data["pokestops"] = try? Pokestop.getAll(mysql: mysql, minLat: minLat!, maxLat: maxLat!, minLon: minLon!, maxLon: maxLon!, updated: lastUpdate, questsOnly: !showPokestops, showQuests: permShowQuests, showLures: permShowLures, showInvasions: permShowInvasions, questFilterExclude: questFilterExclude, invasionFilterExclude: invasionFilterExclude, pokestopFilterExclude: pokestopFilterExclude)
+            data["pokestops"] = try? Pokestop.getAll(mysql: mysql, minLat: minLat!, maxLat: maxLat!, minLon: minLon!, maxLon: maxLon!, updated: lastUpdate, questsOnly: !showPokestops, showQuests: permShowQuests, showLures: permShowLures, showInvasions: showInvasions && permShowInvasions, questFilterExclude: questFilterExclude, invasionFilterExclude: invasionFilterExclude, pokestopFilterExclude: pokestopFilterExclude)
         }
         let permShowIV = perms.contains(.viewMapIV)
         if isPost && permViewMap && showPokemon && perms.contains(.viewMapPokemon){
@@ -517,7 +517,7 @@ class ApiRequestHandler {
                         "sort": i
                     ],
                     "name": gruntName,
-                    "image": "<img class=\"lazy_load\" data-src=\"/static/img/grunt_type/\(i).png\" style=\"height:50px; width:50px;\">",
+                    "image": "<img class=\"lazy_load\" data-src=\"/static/img/grunt/\(i).png\" style=\"height:50px; width:50px;\">",
                     "filter": filter,
                     "size": size,
                     "type": invasionsFilterString
@@ -840,7 +840,6 @@ class ApiRequestHandler {
             var pokestopData = [[String: Any]]()
             
             let pokestopNormal = Localizer.global.get(value: "filter_pokestop_normal")
-            let pokestopInvasion = Localizer.global.get(value: "filter_pokestop_invasion")
             
             let filter = """
             <div class="btn-group btn-group-toggle" data-toggle="buttons">
