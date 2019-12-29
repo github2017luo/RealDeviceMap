@@ -516,7 +516,7 @@ class Pokestop: JSONConvertibleObject, WebHookEvent, Hashable {
             }
         }
         
-        if showLures && pokestopFilterExclude != nil {
+        if pokestopFilterExclude != nil {
             for filter in pokestopFilterExclude! {
                 if filter.contains(string: "normal") {
                     excludeNormal = true
@@ -593,7 +593,7 @@ class Pokestop: JSONConvertibleObject, WebHookEvent, Hashable {
                 sqlExcludeCreate += "?))"
                 excludeLureSQL = sqlExcludeCreate
             } else {
-                excludeLureSQL = hasLureSQL
+                excludeLureSQL = ""// hasLureSQL //TODO: Causes normal pokestops to not show when they should, but also won't show lures
             }
         } else {
             excludeLureSQL = ""
@@ -650,7 +650,7 @@ class Pokestop: JSONConvertibleObject, WebHookEvent, Hashable {
         """
         //TODO: Fix normal pokestops filter
         if excludeNormal && excludeSQL.isEmpty && (showQuests || showLures || showInvasions) {
-            sql += " AND (quest_reward_type IS NOT NULL OR incident_expire_timestamp >= UNIX_TIMESTAMP() OR lure_expire_timestamp >= UNIX_TIMESTAMP())"
+            sql += " AND (incident_expire_timestamp >= UNIX_TIMESTAMP() OR lure_expire_timestamp >= UNIX_TIMESTAMP())"
         }
 
         let mysqlStmt = MySQLStmt(mysql)
