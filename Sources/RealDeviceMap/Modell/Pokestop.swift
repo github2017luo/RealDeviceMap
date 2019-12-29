@@ -516,7 +516,7 @@ class Pokestop: JSONConvertibleObject, WebHookEvent, Hashable {
             }
         }
         
-        if pokestopFilterExclude != nil {
+        if showLures && pokestopFilterExclude != nil {
             for filter in pokestopFilterExclude! {
                 if filter.contains(string: "normal") {
                     excludeNormal = true
@@ -528,7 +528,7 @@ class Pokestop: JSONConvertibleObject, WebHookEvent, Hashable {
             }
         }
         
-        if invasionFilterExclude != nil {
+        if showInvasions && invasionFilterExclude != nil {
             for filter in invasionFilterExclude! {
                 if showInvasions {
                     if let id = filter.stringByReplacing(string: "i", withString: "").toInt() {
@@ -548,7 +548,7 @@ class Pokestop: JSONConvertibleObject, WebHookEvent, Hashable {
             if excludedTypes.isEmpty {
                 excludeTypeSQL = ""
             } else {
-                var sqlExcludeCreate = "OR (quest_reward_type IS NULL OR quest_reward_type NOT IN ("
+                var sqlExcludeCreate = "(quest_reward_type IS NULL OR quest_reward_type NOT IN ("
                 for _ in 1..<excludedTypes.count {
                     sqlExcludeCreate += "?, "
                 }
@@ -559,7 +559,7 @@ class Pokestop: JSONConvertibleObject, WebHookEvent, Hashable {
             if excludedPokemon.isEmpty {
                 excludePokemonSQL = ""
             } else {
-                var sqlExcludeCreate = "OR (quest_pokemon_id IS NULL OR quest_pokemon_id NOT IN ("
+                var sqlExcludeCreate = "(quest_pokemon_id IS NULL OR quest_pokemon_id NOT IN ("
                 for _ in 1..<excludedPokemon.count {
                     sqlExcludeCreate += "?, "
                 }
@@ -570,7 +570,7 @@ class Pokestop: JSONConvertibleObject, WebHookEvent, Hashable {
             if excludedItems.isEmpty {
                 excludeItemSQL = ""
             } else {
-                var sqlExcludeCreate = "OR (quest_item_id IS NULL OR quest_item_id NOT IN ("
+                var sqlExcludeCreate = "(quest_item_id IS NULL OR quest_item_id NOT IN ("
                 for _ in 1..<excludedItems.count {
                     sqlExcludeCreate += "?, "
                 }
@@ -582,10 +582,9 @@ class Pokestop: JSONConvertibleObject, WebHookEvent, Hashable {
             excludePokemonSQL = ""
             excludeItemSQL = ""
         }
-        
+
         if showLures {
-            let hasLureSQL = "(lure_expire_timestamp >= UNIX_TIMESTAMP())"
-            //let hasNoLureSQL = "(lure_expire_timestamp IS NULL OR lure_expire_timestamp < UNIX_TIMESTAMP())"
+            let hasLureSQL = "lure_expire_timestamp >= UNIX_TIMESTAMP()"
             if !excludedLures.isEmpty {
                 var sqlExcludeCreate = "(\(hasLureSQL) AND lure_id NOT IN ("
                 for _ in excludedLures {
@@ -594,73 +593,64 @@ class Pokestop: JSONConvertibleObject, WebHookEvent, Hashable {
                 sqlExcludeCreate += "?))"
                 excludeLureSQL = sqlExcludeCreate
             } else {
-                excludeLureSQL = "\(hasLureSQL)"
+                excludeLureSQL = hasLureSQL
             }
         } else {
             excludeLureSQL = ""
         }
         
         if showInvasions {
-            let hasInvasionSQL = "(incident_expire_timestamp >= UNIX_TIMESTAMP())"
-            //let hasNoInvasionSQL = "(incident_expire_timestamp IS NULL OR incident_expire_timestamp < UNIX_TIMESTAMP())"
+            let hasInvasionSQL = "incident_expire_timestamp >= UNIX_TIMESTAMP()"
             if !excludedGrunts.isEmpty {
-                var sqlExcludeCreate = "OR (\(hasInvasionSQL) AND grunt_type NOT IN ("
+                var sqlExcludeCreate = "(\(hasInvasionSQL) AND grunt_type NOT IN ("
                 for _ in excludedGrunts {
                     sqlExcludeCreate += "?, "
                 }
                 sqlExcludeCreate += "?))"
                 excludeInvasionSQL = sqlExcludeCreate
             } else {
-                excludeInvasionSQL = "OR \(hasInvasionSQL)"
+                excludeInvasionSQL = hasInvasionSQL
             }
         } else {
-            excludeInvasionSQL = "AND NOT (incident_expire_timestamp >= UNIX_TIMESTAMP())"
+            excludeInvasionSQL = ""
         }
         
-        //TODO: showLures, showInvasions
-        /*
-        if excludeNormal || !excludedLures.isEmpty {
-            if excludedLures.isEmpty {
-                excludeLureSQL = ""
+        var excludeQuestSQL = ""
+        let hasQuestFilter = !excludeTypeSQL.isEmpty || !excludePokemonSQL.isEmpty || !excludeItemSQL.isEmpty
+        if hasQuestFilter {
+            excludeQuestSQL += "\(excludeTypeSQL)"
+            if !excludePokemonSQL.isEmpty && !excludeQuestSQL.isEmpty {
+                excludeQuestSQL += "AND \(excludePokemonSQL)"
             } else {
-                var sqlExcludeCreate = "AND (lure_id NOT IN ("
-                for _ in excludedLures {
-                    sqlExcludeCreate += "?, "
-                }
-                sqlExcludeCreate += "?))"
-                excludeLureSQL = sqlExcludeCreate
+                excludeQuestSQL += excludePokemonSQL
             }
-
-            let hasLureSQL = "(lure_expire_timestamp IS NOT NULL AND lure_expire_timestamp >= UNIX_TIMESTAMP() \(excludeLureSQL))"
-            let hasNoLureSQL = "(lure_expire_timestamp IS NULL OR lure_expire_timestamp < UNIX_TIMESTAMP())"
-            let hasInvasionSQL = "(incident_expire_timestamp IS NOT NULL AND incident_expire_timestamp >= UNIX_TIMESTAMP())"
-            let hasNoInvasionSQL = "(incident_expire_timestamp IS NULL OR incident_expire_timestamp < UNIX_TIMESTAMP())"
-
-            excludePokestopSQL = "AND ("
-            if excludeNormal && excludeInvasion {
-                excludePokestopSQL += "(\(hasLureSQL) AND \(hasNoInvasionSQL))"
-            } else if excludeNormal && !excludeInvasion {
-                excludePokestopSQL += "(\(hasLureSQL) OR \(hasInvasionSQL))"
-            } else if !excludeNormal && excludeInvasion {
-                excludePokestopSQL += "((\(hasNoLureSQL) OR \(hasLureSQL)) AND \(hasNoInvasionSQL))"
+            if !excludeItemSQL.isEmpty && !excludeQuestSQL.isEmpty {
+                excludeQuestSQL += "AND \(excludeItemSQL)"
             } else {
-                excludePokestopSQL += "(\(hasNoLureSQL) OR \(hasLureSQL))"
+                excludeQuestSQL += excludeItemSQL
             }
-            excludePokestopSQL += ")"
-        } else {
-            excludePokestopSQL = ""
         }
- */
-        let hasFilter = !excludeTypeSQL.isEmpty || !excludePokemonSQL.isEmpty || !excludeItemSQL.isEmpty || !excludeLureSQL.isEmpty || !excludeInvasionSQL.isEmpty
-        let test = hasFilter ? "AND ( \(excludeTypeSQL) \(excludePokemonSQL) \(excludeItemSQL) \(excludeLureSQL) \(excludeInvasionSQL) )" : "\(excludeTypeSQL) \(excludePokemonSQL) \(excludeItemSQL) OR \(excludeLureSQL) \(excludeInvasionSQL)"
+        var excludeSQL: String
+        if !excludeInvasionSQL.isEmpty && !excludeQuestSQL.isEmpty {
+             excludeSQL = "((\(excludeQuestSQL)) OR (\(excludeInvasionSQL)))"
+        } else {
+             excludeSQL = excludeInvasionSQL
+        }
+        if !excludeLureSQL.isEmpty && !excludeSQL.isEmpty {
+             excludeSQL = "(\(excludeSQL)) OR (\(excludeLureSQL))"
+        } else {
+             excludeSQL = excludeLureSQL
+        }
+         
+        let sqlFilter = excludeSQL.isEmpty ? "" : "AND (\(excludeSQL))"
         var sql = """
             SELECT id, lat, lon, name, url, enabled, lure_expire_timestamp, last_modified_timestamp, updated, quest_type, quest_timestamp, quest_target, CAST(quest_conditions AS CHAR), CAST(quest_rewards AS CHAR), quest_template, cell_id, lure_id, pokestop_display, incident_expire_timestamp, grunt_type, sponsor_id
             FROM pokestop
-            WHERE lat >= ? AND lat <= ? AND lon >= ? AND lon <= ? AND updated > ? AND deleted = false \(test)
+            WHERE lat >= ? AND lat <= ? AND lon >= ? AND lon <= ? AND updated > ? AND deleted = false \(sqlFilter)
         """
-        if excludeNormal || questsOnly {
-            //sql += " AND quest_reward_type IS NOT NULL"
-            sql += " AND (incident_expire_timestamp >= UNIX_TIMESTAMP() OR lure_expire_timestamp >= UNIX_TIMESTAMP())"
+        //TODO: Fix normal pokestops filter
+        if excludeNormal && excludeSQL.isEmpty && (showQuests || showLures || showInvasions) {
+            sql += " AND (quest_reward_type IS NOT NULL OR incident_expire_timestamp >= UNIX_TIMESTAMP() OR lure_expire_timestamp >= UNIX_TIMESTAMP())"
         }
 
         let mysqlStmt = MySQLStmt(mysql)
