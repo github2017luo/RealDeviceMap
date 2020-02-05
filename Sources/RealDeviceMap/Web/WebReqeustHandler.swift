@@ -178,7 +178,7 @@ class WebReqeustHandler {
             data["hide_spawnpoints"] = !perms.contains(.viewMapSpawnpoint)
             data["hide_quests"] = !perms.contains(.viewMapQuest)
             //data["hide_lures"] = !perms.contains(.viewMapLure)
-            //data["hide_invasions"] = !perms.contains(.viewMapInvasion)
+            data["hide_invasions"] = !perms.contains(.viewMapInvasion)
             data["hide_cells"] = !perms.contains(.viewMapCell)
             data["hide_submission_cells"] = !perms.contains(.viewMapSubmissionCells)
             data["hide_weathers"] = !perms.contains(.viewMapWeather)
@@ -238,7 +238,7 @@ class WebReqeustHandler {
                            "filter_quest_filter", "filter_raid_filter", "filter_gym_filter",
                            "filter_pokestop_filter", "filter_spawnpoint_filter", "filter_cells",
                            "filter_weathers", "filter_devices", "filter_select_mapstyle", "filter_mapstyle",
-                           "filter_export", "filter_import", "filter_submission_cells"]
+                           "filter_export", "filter_import", "filter_submission_cells", "filter_invasion_filter"]
             for loc in homeLoc {
                 data[loc] = localizer.get(value: loc)
             }

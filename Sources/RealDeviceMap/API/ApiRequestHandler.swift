@@ -38,7 +38,9 @@ class ApiRequestHandler {
         let showRaids = request.param(name: "show_raids")?.toBool() ?? false
         let showPokestops = request.param(name: "show_pokestops")?.toBool() ?? false
         let showQuests = request.param(name: "show_quests")?.toBool() ?? false
+        let showInvasions = request.param(name: "show_invasions")?.toBool() ?? false
         let questFilterExclude = request.param(name: "quest_filter_exclude")?.jsonDecodeForceTry() as? [String]
+        let invasionFilterExclude = request.param(name: "invasion_filter_exclude")?.jsonDecodeForceTry() as? [String]
         let showPokemon = request.param(name: "show_pokemon")?.toBool() ?? false
         let pokemonFilterExclude = request.param(name: "pokemon_filter_exclude")?.jsonDecodeForceTry() as? [Int]
         let pokemonFilterIV = request.param(name: "pokemon_filter_iv")?.jsonDecodeForceTry() as? [String: String]
@@ -60,6 +62,7 @@ class ApiRequestHandler {
         let showGroups =  request.param(name: "show_groups")?.toBool() ?? false
         let showPokemonFilter = request.param(name: "show_pokemon_filter")?.toBool() ?? false
         let showQuestFilter = request.param(name: "show_quest_filter")?.toBool() ?? false
+        let showInvasionFilter = request.param(name: "show_invasion_filter")?.toBool() ?? false
         let showRaidFilter = request.param(name: "show_raid_filter")?.toBool() ?? false
         let showGymFilter = request.param(name: "show_gym_filter")?.toBool() ?? false
         let showPokestopFilter = request.param(name: "show_pokestop_filter")?.toBool() ?? false
@@ -71,7 +74,8 @@ class ApiRequestHandler {
         let showDiscordRules = request.param(name: "show_discordrules")?.toBool() ?? false
 
         if (showGyms || showRaids || showPokestops || showPokemon || showSpawnpoints ||
-            showCells || showSubmissionTypeCells || showSubmissionPlacementCells || showWeathers) &&
+            showCells || showSubmissionTypeCells || showSubmissionPlacementCells ||
+            showInvasions || showWeathers) &&
             (minLat == nil || maxLat == nil || minLon == nil || maxLon == nil) {
             response.respondWithError(status: .badRequest)
             return
@@ -155,12 +159,16 @@ class ApiRequestHandler {
         let permShowQuests =  perms.contains(.viewMapQuest)
         let permShowLures = perms.contains(.viewMapLure)
         let permShowInvasions = perms.contains(.viewMapInvasion)
-        if isPost && (permViewMap && (showPokestops && permShowStops || showQuests && permShowQuests)) {
+        if isPost && (permViewMap && (
+                showPokestops && permShowStops ||
+                showQuests && permShowQuests ||
+                showInvasions && permShowInvasions)
+           ) {
             data["pokestops"] = try? Pokestop.getAll(
                 mysql: mysql, minLat: minLat!, maxLat: maxLat!, minLon: minLon!, maxLon: maxLon!, updated: lastUpdate,
                 questsOnly: !showPokestops, showQuests: permShowQuests, showLures: permShowLures,
                 showInvasions: permShowInvasions, questFilterExclude: questFilterExclude,
-                pokestopFilterExclude: pokestopFilterExclude
+                invasionFilterExclude: invasionFilterExclude, pokestopFilterExclude: pokestopFilterExclude
             )
         }
         let permShowIV = perms.contains(.viewMapIV)
@@ -518,6 +526,73 @@ class ApiRequestHandler {
                     ])
             }
             data["quest_filters"] = questData
+        }
+
+        if permViewMap && showInvasionFilter {
+            let hideString = Localizer.global.get(value: "filter_hide")
+            let showString = Localizer.global.get(value: "filter_show")
+
+            let smallString = Localizer.global.get(value: "filter_small")
+            let normalString = Localizer.global.get(value: "filter_normal")
+            let largeString = Localizer.global.get(value: "filter_large")
+            let hugeString = Localizer.global.get(value: "filter_huge")
+
+            let invasionsFilterString = Localizer.global.get(value: "filter_invasion_grunt_type")
+            var invasionData = [[String: Any]]()
+
+            //Grunt Types
+            for i in 1...50 {
+
+                let gruntName = Localizer.global.get(value: "grunt_\(i)")
+
+                let filter = """
+                <div class="btn-group btn-group-toggle" data-toggle="buttons">
+                <label class="btn btn-sm btn-off select-button-new" data-id="\(i)"
+                 data-type="grunt-type" data-info="hide">
+                <input type="radio" name="options" id="hide" autocomplete="off">\(hideString)
+                </label>
+                <label class="btn btn-sm btn-on select-button-new" data-id="\(i)"
+                 data-type="grunt-type" data-info="show">
+                <input type="radio" name="options" id="show" autocomplete="off">\(showString)
+                </label>
+                </div>
+                """
+
+                let size = """
+                <div class="btn-group btn-group-toggle" data-toggle="buttons">
+                <label class="btn btn-sm btn-size select-button-new" data-id="\(i)"
+                 data-type="grunt-type" data-info="small">
+                <input type="radio" name="options" id="hide" autocomplete="off">\(smallString)
+                </label>
+                <label class="btn btn-sm btn-size select-button-new" data-id="\(i)"
+                 data-type="grunt-type" data-info="normal">
+                <input type="radio" name="options" id="show" autocomplete="off">\(normalString)
+                </label>
+                <label class="btn btn-sm btn-size select-button-new" data-id="\(i)"
+                 data-type="grunt-type" data-info="large">
+                <input type="radio" name="options" id="show" autocomplete="off">\(largeString)
+                </label>
+                <label class="btn btn-sm btn-size select-button-new" data-id="\(i)"
+                 data-type="grunt-type" data-info="huge">
+                <input type="radio" name="options" id="show" autocomplete="off">\(hugeString)
+                </label>
+                </div>
+                """
+
+                invasionData.append([
+                    "id": [
+                        "formatted": String(format: "%03d", i),
+                        "sort": i
+                    ],
+                    "name": gruntName,
+                    "image": "<img class=\"lazy_load\" data-src=\"/static/img/grunt/\(i).png\" " +
+                             "style=\"height:50px; width:50px;\">",
+                    "filter": filter,
+                    "size": size,
+                    "type": invasionsFilterString
+                ])
+            }
+            data["invasion_filters"] = invasionData
         }
 
         if permViewMap && showRaidFilter {
